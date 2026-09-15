@@ -1,0 +1,657 @@
+{
+  "name": "Project 2: N8N AI document summarizer",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "original_filename",
+              "displayName": "original_filename",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "renamed_filename",
+              "displayName": "renamed_filename",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tags",
+              "displayName": "tags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary_file",
+              "displayName": "summary_file",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_message",
+              "displayName": "error_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        2256,
+        -80
+      ],
+      "id": "bc462cf4-87e5-48dc-9df2-5655473173b5",
+      "name": "Log to Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_OAUTH2_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLE_SHEETS_CREDENTIAL_NAME"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $node['Handle Failure'].json;\nreturn [{\n  json: {\n    original_filename: data.originalFilename,\n    renamed_filename: data.failedFilename,\n    timestamp: data.timestamp,\n    tags: '',\n    summary_file: '',\n    status: 'failed',\n    error_message: data.errorMessage\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2032,
+        -272
+      ],
+      "id": "5cedaa44-075b-4c06-870d-82ba9c45f7f6",
+      "name": "Prepare Failure Log"
+    },
+    {
+      "parameters": {
+        "command": "={{ $json.moveToFailedCommand }}"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1808,
+        -272
+      ],
+      "id": "2cfdfae8-59ba-49e8-a645-d9ce7ba5c814",
+      "name": "Move Source to Failed",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const meta = $node['Prepare Input'].json;\nconst rawError = $json.error ?? $json;\nlet errorMessage = rawError?.message ?? rawError?.description ?? rawError;\nif (typeof errorMessage !== 'string') {\n  try { errorMessage = JSON.stringify(errorMessage); } catch (_) { errorMessage = 'Unknown processing error'; }\n}\nerrorMessage = String(errorMessage || 'Unknown processing error').slice(0, 1000);\n\nconst failedFilename = Date.now() + '_' + meta.originalFilename;\nconst failedPath = meta.failedDir + '\\\\' + failedFilename;\nconst psLiteral = (value) => \"'\" + String(value).replace(/'/g, \"''\") + \"'\";\nconst moveScript = [\n  \"$ErrorActionPreference = 'Stop'\",\n  'New-Item -ItemType Directory -Path ' + psLiteral(meta.failedDir) + ' -Force | Out-Null',\n  'if (Test-Path -LiteralPath ' + psLiteral(meta.sourcePath) + ') {',\n  '  Move-Item -LiteralPath ' + psLiteral(meta.sourcePath) + ' -Destination ' + psLiteral(failedPath) + ' -Force',\n  '}'\n].join(\"\\r\\n\");\n\nreturn [{\n  json: {\n    ...meta,\n    timestamp: new Date().toISOString(),\n    status: 'failed',\n    errorMessage,\n    failedFilename,\n    failedPath,\n    moveToFailedCommand: 'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ' + Buffer.from(moveScript, 'utf16le').toString('base64')\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        -272
+      ],
+      "id": "0ca076ce-bb85-495f-a110-7187844ba98f",
+      "name": "Handle Failure"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $node['Parse Ollama Response'].json;\nreturn [{\n  json: {\n    original_filename: data.originalFilename,\n    renamed_filename: data.renamedFilename,\n    timestamp: data.timestamp,\n    tags: data.tags.join(', '),\n    summary_file: data.summaryFilePath,\n    status: 'success',\n    error_message: ''\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2032,
+        112
+      ],
+      "id": "751b66b9-ab7d-4582-bf95-0dd8ffe44c15",
+      "name": "Prepare Success Log"
+    },
+    {
+      "parameters": {
+        "command": "={{ $node[\"Parse Ollama Response\"].json.renameCommand }}"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        64
+      ],
+      "id": "70e33af2-fe35-41e1-b74d-23de9683461b",
+      "name": "Rename Source File",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $node[\"Parse Ollama Response\"].json.summaryFilePath }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1136,
+        0
+      ],
+      "id": "eb1f9a42-6ab7-4e47-ad0e-77792b61e219",
+      "name": "Write Summary to Disk",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "summaryMarkdown",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        912,
+        -80
+      ],
+      "id": "14ded0e9-543c-4a78-bcf0-0a144bee2b1e",
+      "name": "Create Markdown File",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const meta = $node['Normalize Extracted Text'].json;\nlet raw = $json.response ?? $json.data?.response ?? $json.body?.response ?? $json.data ?? $json.body ?? $json;\n\nif (typeof raw === 'string') {\n  raw = raw.trim().replace(/^\\`\\`\\`(?:json)?\\s*/i, '').replace(/\\s*\\`\\`\\`$/, '');\n  try { raw = JSON.parse(raw); } catch (_) { raw = { summary: raw, tags: [] }; }\n}\n\nif (raw && typeof raw.response === 'string' && raw.summary === undefined) {\n  const nested = raw.response.trim().replace(/^\\`\\`\\`(?:json)?\\s*/i, '').replace(/\\s*\\`\\`\\`$/, '');\n  try { raw = JSON.parse(nested); } catch (_) { raw = { summary: nested, tags: [] }; }\n}\n\nconst clean = (value) => String(value ?? '')\n  .replace(/^\\s*(?:[-*•]|\\d+[.)])\\s*/, '')\n  .replace(/^#+\\s*/, '')\n  .trim();\n\nlet points = raw?.summary ?? raw?.bullet_points ?? raw?.bullets ?? [];\nif (!Array.isArray(points)) {\n  points = String(points)\n    .split(/\\n+/)\n    .map(clean)\n    .filter((line) => line && !/^tags?\\s*:/i.test(line));\n}\npoints = points.map(clean).filter(Boolean).slice(0, 3);\n\nconst sourceSentences = meta.text\n  .replace(/\\s+/g, ' ')\n  .split(/(?<=[.!?])\\s+/)\n  .map(clean)\n  .filter(Boolean);\nwhile (points.length < 3) {\n  points.push(sourceSentences[points.length] || sourceSentences[0] || 'No additional summary point was available.');\n}\n\nlet tags = raw?.tags ?? raw?.keywords ?? [];\nif (!Array.isArray(tags)) tags = String(tags).split(/[,\\n|/]+/);\ntags = tags.map(clean).map((tag) => tag.replace(/^#/, '')).filter(Boolean).slice(0, 3);\n\nif (tags.length < 3) {\n  const stop = new Set(['this','that','with','from','have','were','will','would','could','about','there','their','which','when','where','document','summary','text','into','also','than','then','they','them','these','those','your','been','being','does','each']);\n  const counts = {};\n  for (const word of meta.text.toLowerCase().match(/[a-z][a-z0-9-]{3,}/g) || []) {\n    if (!stop.has(word)) counts[word] = (counts[word] || 0) + 1;\n  }\n  for (const [word] of Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))) {\n    if (!tags.some((tag) => tag.toLowerCase() === word)) tags.push(word);\n    if (tags.length === 3) break;\n  }\n}\nwhile (tags.length < 3) tags.push(['document', 'summary', 'local-ai'][tags.length]);\n\nconst safeTags = tags.map((tag, index) => {\n  const safe = tag.toLowerCase()\n    .normalize('NFKD')\n    .replace(/[^a-z0-9]+/g, '-')\n    .replace(/^-+|-+$/g, '')\n    .slice(0, 24);\n  return safe || ['document', 'summary', 'local-ai'][index];\n});\n\nconst now = new Date();\nconst date = new Intl.DateTimeFormat('en-CA', {\n  timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit'\n}).format(now);\nconst timestamp = now.toISOString();\nconst renamedFilename = date + '_' + safeTags.join('_') + '_' + meta.originalFilename;\nconst summaryFilePath = meta.summaryDir + '\\\\' + meta.baseName + '.md';\nconst renamedPath = meta.inboxDir + '\\\\' + renamedFilename;\n\nconst summaryMarkdown = [\n  '# ' + meta.baseName,\n  '',\n  '## Summary',\n  ...points.map((point) => '- ' + point),\n  '',\n  '## Tags',\n  ...tags.map((tag) => '- ' + tag),\n  '',\n  '_Processed: ' + timestamp + '_',\n  ''\n].join('\\n');\n\nconst psLiteral = (value) => \"'\" + String(value).replace(/'/g, \"''\") + \"'\";\nconst renameScript = [\n  \"$ErrorActionPreference = 'Stop'\",\n  'Move-Item -LiteralPath ' + psLiteral(meta.sourcePath) + ' -Destination ' + psLiteral(renamedPath) + ' -Force'\n].join(\"\\r\\n\");\n\nreturn [{\n  json: {\n    ...meta,\n    summaryPoints: points,\n    tags,\n    safeTags,\n    timestamp,\n    summaryMarkdown,\n    summaryFilePath,\n    renamedFilename,\n    renamedPath,\n    renameCommand: 'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ' + Buffer.from(renameScript, 'utf16le').toString('base64')\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        -144
+      ],
+      "id": "fbe972c6-bffc-4eef-83cc-02d9936a9e1d",
+      "name": "Parse Ollama Response",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:11434/api/generate",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ model: 'llama3.1:8b', stream: false, format: 'json', options: { temperature: 0.1, num_predict: 350 }, prompt: 'Return only valid JSON with this shape: {\"summary\":[\"point 1\",\"point 2\",\"point 3\"],\"tags\":[\"tag 1\",\"tag 2\",\"tag 3\"]}. Summarize the following text in 3 concise bullet points and provide 3 relevant tags. Text: ' + $json.text.substring(0, 24000) }) }}",
+        "options": {
+          "timeout": 55000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        464,
+        -224
+      ],
+      "id": "085999ba-aa65-4066-8d99-fa4fd5149190",
+      "name": "Summarize with Ollama",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const meta = $node['Prepare Input'].json;\nconst text = String($json.text ?? $json.stdout ?? '')\n  .replace(/\\u0000/g, '')\n  .replace(/\\r\\n/g, '\\n')\n  .trim();\n\nif (!text) throw new Error('No plain text could be extracted from the document.');\n\nreturn [{\n  json: {\n    ...meta,\n    text\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        -288
+      ],
+      "id": "dc15e469-babf-4b2a-a9a5-6519fb0d809d",
+      "name": "Normalize Extracted Text",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "command": "={{ $json.docxExtractCommand }}"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        16,
+        400
+      ],
+      "id": "39683115-fb7d-460c-8cd4-b0b27bc9702d",
+      "name": "Extract DOCX Text",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().filter((item) => item.json.extension === '.docx');"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        400
+      ],
+      "id": "4934e15c-0970-4391-b3db-5e8373753173",
+      "name": "DOCX Files Only"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        16,
+        -368
+      ],
+      "id": "1baadde0-6e21-426d-b8b8-33c70b7269b0",
+      "name": "Extract PDF Text",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $json.sourcePath }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -208,
+        -288
+      ],
+      "id": "2bad23f6-154f-482f-a4b5-ee5dbdde6276",
+      "name": "Read PDF from Disk",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().filter((item) => item.json.extension === '.pdf');"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -432,
+        -288
+      ],
+      "id": "63c06b98-aa75-448c-8ba2-bcbb491e3b0e",
+      "name": "PDF Files Only"
+    },
+    {
+      "parameters": {
+        "jsCode": "const path = String($json.path || '').replace(/\\//g, '\\\\');\nif (!path) return [];\n\nconst originalFilename = path.split('\\\\').pop();\nconst extensionMatch = originalFilename.match(/(\\.[^.]+)$/);\nconst extension = extensionMatch ? extensionMatch[1].toLowerCase() : '';\n\n// Process only new PDF and DOCX files. Ignore the date-prefixed files created by this workflow.\nif (!['.pdf', '.docx'].includes(extension)) return [];\nif (/^\\d{4}-\\d{2}-\\d{2}_[^_]+_[^_]+_[^_]+_/i.test(originalFilename)) return [];\n\nconst baseName = originalFilename.slice(0, -extension.length);\nconst inboxDir = 'C:\\\\Users\\\\YOUR_WINDOWS_USERNAME\\\\.n8n-files\\\\inbox';\nconst summaryDir = 'C:\\\\Users\\\\YOUR_WINDOWS_USERNAME\\\\.n8n-files\\\\summary';\nconst failedDir = 'C:\\\\Users\\\\YOUR_WINDOWS_USERNAME\\\\.n8n-files\\\\failed';\nconst psLiteral = (value) => \"'\" + String(value).replace(/'/g, \"''\") + \"'\";\n\nconst docxScript = [\n  \"$ErrorActionPreference = 'Stop'\",\n  '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8',\n  'Add-Type -AssemblyName System.IO.Compression.FileSystem',\n  '$archive = [System.IO.Compression.ZipFile]::OpenRead(' + psLiteral(path) + ')',\n  'try {',\n  \"  $entry = $archive.GetEntry('word/document.xml')\",\n  \"  if ($null -eq $entry) { throw 'word/document.xml was not found in the DOCX file.' }\",\n  '  $stream = $entry.Open()',\n  '  try {',\n  '    $reader = New-Object System.IO.StreamReader($stream, [System.Text.Encoding]::UTF8)',\n  '    try { $xmlText = $reader.ReadToEnd() } finally { $reader.Dispose() }',\n  '  } finally { $stream.Dispose() }',\n  '  $doc = New-Object System.Xml.XmlDocument',\n  '  $doc.LoadXml($xmlText)',\n  '  $ns = New-Object System.Xml.XmlNamespaceManager($doc.NameTable)',\n  \"  $ns.AddNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main')\",\n  \"  $paragraphs = foreach ($paragraph in $doc.SelectNodes('//w:body/w:p', $ns)) {\",\n  \"    $parts = foreach ($textNode in $paragraph.SelectNodes('.//w:t', $ns)) { $textNode.InnerText }\",\n  \"    $line = ($parts -join '').Trim()\",\n  '    if ($line) { $line }',\n  '  }',\n  '  [Console]::Write(($paragraphs -join [Environment]::NewLine))',\n  '} finally { $archive.Dispose() }'\n].join(\"\\r\\n\");\n\nreturn [{\n  json: {\n    sourcePath: path,\n    originalFilename,\n    baseName,\n    extension,\n    inboxDir,\n    summaryDir,\n    failedDir,\n    docxExtractCommand: 'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ' + Buffer.from(docxScript, 'utf16le').toString('base64')\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -656,
+        -192
+      ],
+      "id": "4196eb36-e2a4-4306-bc48-7429b472d6c1",
+      "name": "Prepare Input"
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -880,
+        -192
+      ],
+      "id": "0b21a25c-0b37-4a27-8f9d-cb1b4f611936",
+      "name": "Wait for File Copy",
+      "webhookId": "7346931e-01a8-4e6d-86e9-cb2357d8d04a"
+    },
+    {
+      "parameters": {
+        "triggerOn": "folder",
+        "path": "C:\\Users\\YOUR_WINDOWS_USERNAME\\.n8n-files\\inbox",
+        "events": [
+          "add"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.localFileTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1104,
+        -192
+      ],
+      "id": "1eb58a17-7b87-43b6-a676-fab4c778d6a0",
+      "name": "Watch Inbox"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Prepare Failure Log": {
+      "main": [
+        [
+          {
+            "node": "Log to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move Source to Failed": {
+      "main": [
+        [
+          {
+            "node": "Prepare Failure Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Failure": {
+      "main": [
+        [
+          {
+            "node": "Move Source to Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Success Log": {
+      "main": [
+        [
+          {
+            "node": "Log to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rename Source File": {
+      "main": [
+        [
+          {
+            "node": "Prepare Success Log",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Summary to Disk": {
+      "main": [
+        [
+          {
+            "node": "Rename Source File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Markdown File": {
+      "main": [
+        [
+          {
+            "node": "Write Summary to Disk",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Ollama Response": {
+      "main": [
+        [
+          {
+            "node": "Create Markdown File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize with Ollama": {
+      "main": [
+        [
+          {
+            "node": "Parse Ollama Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Extracted Text": {
+      "main": [
+        [
+          {
+            "node": "Summarize with Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract DOCX Text": {
+      "main": [
+        [
+          {
+            "node": "Normalize Extracted Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DOCX Files Only": {
+      "main": [
+        [
+          {
+            "node": "Extract DOCX Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Text": {
+      "main": [
+        [
+          {
+            "node": "Normalize Extracted Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read PDF from Disk": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Files Only": {
+      "main": [
+        [
+          {
+            "node": "Read PDF from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Input": {
+      "main": [
+        [
+          {
+            "node": "DOCX Files Only",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "PDF Files Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for File Copy": {
+      "main": [
+        [
+          {
+            "node": "Prepare Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Watch Inbox": {
+      "main": [
+        [
+          {
+            "node": "Wait for File Copy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": ""
+  },
+  "nodeGroups": [],
+  "id": "",
+  "tags": []
+}
