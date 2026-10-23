@@ -16,7 +16,13 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; min-width: 320px; }
-body { background: var(--paper); color: var(--ink); font-size: 14px; line-height: 1.5; }
+body { isolation: isolate; background: var(--paper); color: var(--ink); font-size: 14px; line-height: 1.5; }
+.desk-shapes { position: fixed; z-index: -1; inset: 0; overflow: hidden; pointer-events: none; }
+.desk-shape { position: absolute; display: block; color: #147d761c; border: 2px solid currentColor; }
+.shape-ring { width: 148px; height: 148px; top: -48px; left: 36%; border-width: 18px; border-radius: 50%; }
+.shape-square { width: 86px; height: 86px; top: 23%; right: -30px; border-radius: 22px; transform: rotate(24deg); }
+.shape-triangle { width: 108px; height: 108px; bottom: -52px; left: 26%; border: 0; background: currentColor; clip-path: polygon(50% 0, 100% 100%, 0 100%); transform: rotate(-18deg); }
+.shape-pill { width: 106px; height: 42px; right: 22%; bottom: -20px; border-radius: 50px; transform: rotate(-30deg); }
 button, textarea, input { font: inherit; }
 button, a, label.upload { -webkit-tap-highlight-color: transparent; }
 button { color: inherit; cursor: pointer; }
@@ -42,6 +48,7 @@ button { border-radius: 10px; }
   background: #f3f6f9;
   box-shadow: var(--raised);
 }
+.rail > :not(.documents) { flex-shrink: 0; }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; margin: 0 4px 32px; }
 .brand-icon {
   display: grid;
@@ -238,8 +245,10 @@ blockquote { margin: 18px 0; padding: 13px 17px; border-left: 3px solid var(--ac
   .desk { gap: 13px; }
   .brand { gap: 8px; }
   .brand strong { font-size: 20px; }
-  .intro { gap: 12px; }
-  .model-card { width: 195px; padding: 9px; gap: 8px; }
+  .intro { flex-direction: column; align-items: stretch; gap: 12px; }
+  .intro p { max-width: none; }
+  .model-card { width: 100%; padding: 6px 12px; gap: 8px; }
+  .model-card button { margin-left: auto; }
   .model-card button { width: 30px; }
   .model-card strong { font-size: 11px; }
   .model-card span:not(.status-light) { font-size: 11px; }
@@ -351,6 +360,14 @@ blockquote { margin: 18px 0; padding: 13px 17px; border-left: 3px solid var(--ac
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  .shape-ring { animation: drift-ring 31s ease-in-out infinite alternate; }
+  .shape-square { animation: drift-square 37s ease-in-out infinite alternate; }
+  .shape-triangle { animation: drift-triangle 29s ease-in-out infinite alternate; }
+  .shape-pill { animation: drift-pill 43s ease-in-out infinite alternate; }
+  @keyframes drift-ring { to { transform: translate(32px, 18px) rotate(20deg); } }
+  @keyframes drift-square { to { transform: translate(-17px, 28px) rotate(52deg); } }
+  @keyframes drift-triangle { to { transform: translate(27px, -16px) rotate(12deg); } }
+  @keyframes drift-pill { to { transform: translate(-32px, -12px) rotate(-12deg); } }
   button, .upload { transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease; }
   dialog[open] { animation: reveal-dialog .16s ease-out; }
   @keyframes reveal-dialog { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }

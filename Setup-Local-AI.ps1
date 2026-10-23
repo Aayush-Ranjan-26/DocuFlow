@@ -7,7 +7,8 @@ $taskModel = Join-Path $taskRuntime 'qwen2.5-1.5b-instruct-q4_k_m.gguf'
 $taskKey = Join-Path $taskRuntime 'key.txt'
 if (-not (Test-Path -LiteralPath $taskKey)) {
   $taskRandom = New-Object byte[] 32
-  [Security.Cryptography.RandomNumberGenerator]::Fill($taskRandom)
+  $taskRng = [Security.Cryptography.RandomNumberGenerator]::Create()
+  try { $taskRng.GetBytes($taskRandom) } finally { $taskRng.Dispose() }
   [IO.File]::WriteAllText($taskKey, [Convert]::ToBase64String($taskRandom))
 }
 Write-Host 'Downloading the official CPU runtime and 1.1 GB Qwen model. No account or payment required.'

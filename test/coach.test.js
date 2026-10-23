@@ -15,8 +15,15 @@ test('document extraction preserves source sections and disallows unsupported/ov
   await assert.rejects(extractDocument(Buffer.alloc(10485761), 'big.pdf'), /10 MB/);
   await assert.rejects(extractDocument(Buffer.from('not PDF'), 'fake.pdf'), /valid PDF/);
   await assert.rejects(extractDocument(Buffer.from(' '), 'blank.txt'), /readable/);
+  await assert.rejects(extractDocument(undefined, 'empty.txt'), /nonempty file/);
 });
 test('all passage text survives chunking without silent gaps', async () => { const content = 'X'.repeat(3501); const doc = await extractDocument(Buffer.from(content), 'long.txt'); assert.equal(passages([doc]).map(p => p.text).join(''), content); });
+test('long upload names keep their real extension when shortened for display', async () => {
+  const doc = await extractDocument(Buffer.from(sample), `../${'x'.repeat(137)}.txt`);
+  assert.equal(doc.name, `${'x'.repeat(136)}.txt`);
+  assert.equal(doc.sections.length, 2);
+  await assert.rejects(extractDocument(Buffer.from(sample), `${'x'.repeat(136)}.txt.exe`), /Supported/);
+});
 test('real PDF and DOCX fixtures extract text and preserve location labels', async () => {
   for (const ext of ['pdf', 'docx']) {
     const doc = await extractDocument(await readFile(new URL(`../samples/Evaluation-Notes.${ext}`, import.meta.url)), `Evaluation-Notes.${ext}`);
@@ -29,6 +36,12 @@ test('fabricated source IDs and non-verbatim evidence are rejected', () => {
   assert.throws(() => verifyTopics({ topics: [{ title: 'Fake', sourceId: 'b', quote: 'model evaluation' }] }, sources), /No model citations/);
   assert.throws(() => verifyTopics({ topics: [{ title: 'Fake', sourceId: 'a', quote: 'nuclear chemistry' }] }, sources), /No model citations/);
   assert.equal(verifyTopics({ topics: [{ title: 'Evaluation', sourceId: 'a', quote: 'model evaluation' }] }, sources).length, 1);
+  assert.equal(verifyTopics({ topics: [null, false, { title: 'Evaluation', sourceId: 'a', quote: 'model evaluation' }] }, sources).length, 1);
+  assert.throws(() => verifyTopics({ topics: [null] }, sources), /No model citations/);
+  assert.equal(verifyTopics({ topics: [
+    { title: 'Evaluation', sourceId: 'a', quote: 'model evaluation' },
+    { title: ' Evaluation ', sourceId: 'a', quote: 'model evaluation' }
+  ] }, sources).length, 1);
 });
 test('schedules exactly respect all daily time budgets', () => { const topics = [{ title: 'One', sourceId: 'a', quote: 'evidence' }]; for (const budgets of [[60, 45, 60], [17, 31], [240, 15]]) { const days = schedule(topics, budgets); assert.deepEqual(days.map(d => d.tasks.reduce((s, t) => s + t.minutes, 0)), budgets); assert.ok(days.flatMap(d => d.tasks).every(t => t.minutes > 0)); } });
 test('natural-language revisions preserve other days and reject impossible constraints', () => {
@@ -40,6 +53,9 @@ test('natural-language revisions preserve other days and reject impossible const
   assert.throws(() => parseConstraints('10 minutes tomorrow', previous), /15–240/);
   assert.throws(() => parseConstraints('45 minutes', previous), /which day/);
   assert.throws(() => parseConstraints('3 days, 45 minutes daily'), /per day/);
+  for (const request of ['-3-day plan', '3.5 days', '.5 days', '-30 minutes per day', '30.5 minutes per day']) assert.throws(() => parseConstraints(request), /Choose/);
+  for (const request of ['-30 minutes tomorrow', '30.5 minutes tomorrow', '.5 minutes tomorrow']) assert.throws(() => parseConstraints(request, previous), /whole minutes/);
+  for (const request of ['30 minutes on day 2.5', '30 minutes on day -2']) assert.throws(() => parseConstraints(request, previous), /which day/);
 });
 test('full draft → revision → explicit save survives restart; stale/replayed confirmations cannot write', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'docuflow-test-'));

@@ -4,7 +4,7 @@ Environment: Windows, Node.js 24.13.0, official MCP SDK 1.32.1, llama.cpp build 
 
 ## Passed
 
-- `npm test`: **12/12** tests after the UI refresh, including real PDF and DOCX extraction fixtures and uploads through the actual HTTP endpoint.
+- `npm test`: **15/15** tests after the agent review, including real PDF and DOCX extraction fixtures and uploads through the actual HTTP endpoint.
 - Real SDK client integration: negotiated **2025-11-25**, discovered six tools, uploaded/read documents, drafted/revised/saved/listed a plan over Streamable HTTP.
 - Host and Origin rejection, unauthenticated API rejection, unsupported-file/size/blank-text rejection, invented quote/ID rejection, exact daily totals.
 - Confirmation required for the exact revision; stale and replayed tokens cannot save. Persistence survives a fresh Coach instance. A later draft does not erase the last saved version; revising a reopened saved revision uses its own budget.
@@ -35,3 +35,13 @@ No actual Alexa device, gated Amazon SDK, AWS, Bee, Ring or Fire TV integration 
 The original n8n workflow and Google Sheets logging were preserved, not executed. OCR, complex PDF reading order, arbitrary natural-language scheduling, mobile-device browsers, load testing, hostile-document fuzzing and educational effectiveness were not comprehensively tested. The coach only inspects its first 16 passages; citations are exact-text checks, not semantic correctness guarantees.
 
 Public GitHub/video URLs and the final Devpost entry must be verified separately. Passing local tests does not mean a hackathon submission has been made or accepted.
+
+## Independent agent review and background motion
+
+Five agents reviewed frontend interactions, backend integrity, visual design, independent correctness and regression/accessibility. Fixed existing-plan time/day-count requests starting a new draft, stale green model readiness after a failed refresh, negative/fractional constraint parsing, malformed topic entries, long filenames losing extensions, whitespace duplicate topics, missing upload validation, and CPU setup key generation compatibility with Windows PowerShell 5.1.
+
+Added four quiet CSS background shapes (ring, square, triangle, pill), behind the workspace with no pointer interaction. Varied transform-only cycles run only when reduced motion is not requested. Compact desktop layout separates the heading and model strip; sidebar controls retain their size.
+
+Verification: 15/15 automated tests passed, including actual browser-handler execution in a VM, extraction regressions, save integrity and actual MCP HTTP client integration. Real local-model check passed with five cited topics and budgets 60/45/60; generation took 9,780 ms. Browser verified 'Make tomorrow 45 minutes', reopening a saved plan then 'Make it 4 days' (budgets 60/45/60/60, revision 3), rejecting -30 minutes without changing the plan, and canceling confirmation without adding a save. Layout checks at 1280x720, 775x668 and 390x844 showed no horizontal overflow. Browser reduced-motion preference was true and all decorative animations correctly computed to none; normal-motion keyframe declarations were inspected, but a normal-motion playback run was not performed. Windows PowerShell 5.1 key generation self-check passed without exposing or storing the temporary key.
+
+Review screenshots: screenshots/review-desktop.png and screenshots/review-mobile.png. The existing MP4 predates this final shape-animation update; it was not re-rendered during this app review. Real mobile devices and penetration/load testing were not performed.

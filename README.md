@@ -23,7 +23,7 @@ Start Ollama first (desktop app, or `ollama serve` in another terminal). Open **
 If Ollama is unavailable, the same local OpenAI-compatible API works with official llama.cpp:
 
 ```powershell
-pwsh -File .\Setup-Local-AI.ps1
+powershell -File .\Setup-Local-AI.ps1
 .\Start-Local-AI.cmd
 # In a second terminal:
 npm ci
