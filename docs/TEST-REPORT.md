@@ -4,7 +4,7 @@ Environment: Windows, Node.js 24.13.0, official MCP SDK 1.32.1, llama.cpp build 
 
 ## Passed
 
-- `npm test`: **10/10** tests, including real PDF and DOCX extraction fixtures and uploads through the actual HTTP endpoint.
+- `npm test`: **12/12** tests after the UI refresh, including real PDF and DOCX extraction fixtures and uploads through the actual HTTP endpoint.
 - Real SDK client integration: negotiated **2025-11-25**, discovered six tools, uploaded/read documents, drafted/revised/saved/listed a plan over Streamable HTTP.
 - Host and Origin rejection, unauthenticated API rejection, unsupported-file/size/blank-text rejection, invented quote/ID rejection, exact daily totals.
 - Confirmation required for the exact revision; stale and replayed tokens cannot save. Persistence survives a fresh Coach instance. A later draft does not erase the last saved version; revising a reopened saved revision uses its own budget.
@@ -19,6 +19,14 @@ Environment: Windows, Node.js 24.13.0, official MCP SDK 1.32.1, llama.cpp build 
 ## Failure found and corrected
 
 The first live extraction returned no acceptable citations. The app rejected it and did not create a false successful plan. The model prompt was simplified to short source IDs and text, removing unrelated UUID/name metadata that confused the small model. The subsequent live run and browser run passed. This does not prove every document will produce valid topics; invalid output still fails clearly.
+
+## Sleek UI refresh checkpoint
+
+Three frontend agents independently updated the stylesheet, semantic page structure, and interaction states. Two backend agents independently reviewed save integrity and added deterministic regressions. Changes use no new runtime dependencies.
+
+The porcelain/slate/teal workspace has raised and inset controls, translucent panels, larger readable text, compact source links, keyboard-accessible file upload, named dialogs, reduced-motion support, and separate scrolling conversation/plan panels. Browser QA at a compact 775 × 668 viewport passed real generation (7,192 ms), exact-source dialog, 60/45/60 revision, cancel without saving, explicit confirmed save, reload and reopening the saved plan. Six screenshots were refreshed from that real session.
+
+A concurrent save could previously replace a newer active draft when its disk write completed. The fix preserves the newer draft and serializes saves of the same plan. Two deterministic tests cover overlapping saves, unused confirmation preservation, failed writes, retry, and restart persistence. All 12 tests pass. Mobile-device QA remains outside this checkpoint.
 
 ## Limits / not verified
 

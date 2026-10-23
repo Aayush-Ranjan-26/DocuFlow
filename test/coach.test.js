@@ -64,3 +64,57 @@ test('bad model output produces an error, never a fabricated successful plan', a
   const coach = new Coach('.', async () => ({ topics: [{ title: 'Space travel', sourceId: 'fake', quote: 'fake evidence' }] })); const doc = await extractDocument(Buffer.from(sample), 'x.txt'); coach.documents.set(doc.id, doc);
   await assert.rejects(coach.draft([doc.id], '3-day plan'), /No model citations/); assert.equal(coach.plans.size, 0); assert.equal(coach.busy, false);
 });
+
+test('a pending save preserves a newer draft and an overlapping save keeps its confirmation', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'docuflow-save-race-'));
+  const write = Promise.withResolvers();
+  try {
+    const coach = new Coach(dir, generator); await coach.init();
+    const doc = await extractDocument(Buffer.from(sample), 'syllabus.txt'); coach.documents.set(doc.id, doc);
+    const original = await coach.draft([doc.id], '3-day plan, 60 minutes per day');
+    const atomicWrite = coach.atomicWrite.bind(coach);
+    coach.atomicWrite = async (file, value) => { await write.promise; await atomicWrite(file, value); };
+    const pendingSave = coach.save(original.id, original.revision, coach.confirmation(original.id, original.revision));
+    const revised = coach.revise(original.id, '45 minutes tomorrow');
+    const token = coach.confirmation(revised.id, revised.revision);
+    await assert.rejects(coach.save(revised.id, revised.revision, token), /already being saved/);
+    assert.equal(coach.confirmations.has(token), true);
+    assert.equal(coach.savedPlans.size, 0);
+    write.resolve();
+    assert.equal((await pendingSave).revision, 1);
+    assert.equal(coach.plans.get(revised.id), revised);
+    assert.equal(coach.plans.get(revised.id).saved, false);
+    assert.equal(coach.savedPlans.get(revised.id).revision, 1);
+    const saved = await coach.save(revised.id, revised.revision, token);
+    assert.equal(saved.revision, 2);
+    assert.deepEqual(saved.days.map(day => day.budget), [60, 45, 60]);
+    const restarted = new Coach(dir, generator); await restarted.init();
+    assert.deepEqual(restarted.savedPlans.get(revised.id), saved);
+  } finally { write.resolve(); await rm(dir, { recursive: true, force: true }); }
+});
+
+test('a failed save leaves the saved revision intact and allows a confirmed retry', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'docuflow-save-failure-'));
+  try {
+    const coach = new Coach(dir, generator); await coach.init();
+    const doc = await extractDocument(Buffer.from(sample), 'syllabus.txt'); coach.documents.set(doc.id, doc);
+    const original = await coach.draft([doc.id], '3-day plan, 60 minutes per day');
+    const saved = await coach.save(original.id, original.revision, coach.confirmation(original.id, original.revision));
+    const revised = coach.revise(original.id, '45 minutes tomorrow');
+    const atomicWrite = coach.atomicWrite.bind(coach);
+    const write = Promise.withResolvers();
+    coach.atomicWrite = () => write.promise;
+    const pendingSave = coach.save(revised.id, revised.revision, coach.confirmation(revised.id, revised.revision));
+    const failedSave = assert.rejects(pendingSave, /disk full/);
+    write.reject(new Error('disk full'));
+    await failedSave;
+    assert.equal(coach.plans.get(revised.id), revised);
+    assert.equal(coach.savedPlans.get(revised.id), saved);
+    assert.deepEqual(JSON.parse(await readFile(path.join(dir, 'plans', `${saved.id}.json`), 'utf8')), saved);
+    coach.atomicWrite = atomicWrite;
+    const retried = await coach.save(revised.id, revised.revision, coach.confirmation(revised.id, revised.revision));
+    assert.equal(retried.revision, 2);
+    assert.equal(retried.saved, true);
+    assert.equal(coach.savedPlans.get(revised.id), retried);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});

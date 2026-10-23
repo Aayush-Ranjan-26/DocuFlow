@@ -1,5 +1,5 @@
 const $ = id => document.getElementById(id);
-let token, requestId = 0, busy = false, plan = null, selected = new Set(), trace = [], savedPlans = [];
+let token, requestId = 0, ready = false, busy = false, plan = null, selected = new Set(), trace = [], savedPlans = [], toastTimer;
 const text = (tag, value, className) => { const el = document.createElement(tag); el.textContent = value; if (className) el.className = className; return el; };
 
 async function api(url, options = {}) {
@@ -22,18 +22,26 @@ async function tool(name, args = {}) {
 function renderTrace() {
   $('protocol-log').replaceChildren(...trace.slice().reverse().map(row => { const el = text('div', row.method, 'protocol-entry'); el.append(text('span', ` · HTTP ${row.status} · ${row.time} ms`)); return el; }));
 }
-function toast(message) { $('toast').textContent = message; $('toast').hidden = false; setTimeout(() => { $('toast').hidden = true; }, 4500); }
+function toast(message) { clearTimeout(toastTimer); $('toast').textContent = message; $('toast').hidden = false; toastTimer = setTimeout(() => { $('toast').hidden = true; }, 4500); }
 function message(content, role = 'coach', error = false) {
   const article = document.createElement('article'); article.className = `message ${role}${error ? ' error' : ''}`;
-  const avatar = text('div', role === 'user' ? 'Y' : '✦', 'avatar'); const body = document.createElement('div'); body.append(text('span', role === 'user' ? 'YOU' : 'DOCUFLOW', 'message-name'), text('p', content)); article.append(avatar, body); $('messages').append(article); $('messages').scrollTop = $('messages').scrollHeight; return article;
+  const avatar = text('div', role === 'user' ? 'Y' : '✦', 'avatar'); const body = document.createElement('div'); body.append(text('span', role === 'user' ? 'You' : 'DocuFlow', 'message-name'), text('p', content)); article.append(avatar, body); $('messages').append(article); $('messages').scrollTop = $('messages').scrollHeight; return article;
 }
-function setBusy(value) { busy = value; $('send-button').disabled = value; $('message').disabled = value; $('save-button').disabled = value || !plan || plan.saved; $('file-input').disabled = value; document.querySelectorAll('[data-prompt]').forEach(b => { b.disabled = value || (b.id === 'revise-prompt' && !plan); }); $('sample-button').disabled = value; }
+function setBusy(value) {
+  busy = value; const disabled = value || !ready;
+  for (const id of ['send-button', 'message', 'file-input', 'sample-button', 'saved-nav']) $(id).disabled = disabled;
+  $('save-button').disabled = disabled || !plan || plan.saved;
+  $('chat-form').setAttribute('aria-busy', String(value));
+  document.querySelectorAll('[data-prompt], #documents input').forEach(b => { b.disabled = disabled || (b.id === 'revise-prompt' && !plan); });
+}
 async function refreshLibrary() {
   const documents = await tool('list_documents'); $('document-count').textContent = documents.length;
-  $('documents').replaceChildren(...documents.map(doc => {
+  selected = new Set([...selected].filter(id => documents.some(doc => doc.id === id)));
+  $('documents').replaceChildren(...(documents.length ? documents.map(doc => {
     const label = document.createElement('label'); label.className = 'doc-item'; const box = document.createElement('input'); box.type = 'checkbox'; box.checked = selected.has(doc.id); box.setAttribute('aria-label', `Use ${doc.name}`); box.addEventListener('change', () => { box.checked ? selected.add(doc.id) : selected.delete(doc.id); });
     const info = document.createElement('span'); info.append(text('strong', doc.name), text('small', `${doc.sections} sections · ${(doc.chars / 1000).toFixed(1)}k characters`)); label.append(box, info); return label;
-  }));
+  }) : [text('p', 'Add course material or try the sample syllabus.', 'empty-small')]));
+  setBusy(busy);
 }
 function showSource(task) {
   const source = plan.sources.find(s => s.id === task.sourceId); if (!source) return;
@@ -42,43 +50,69 @@ function showSource(task) {
 function renderPlan() {
   if (!plan) return; $('plan-content').replaceChildren();
   const total = plan.days.reduce((sum, d) => sum + d.budget, 0);
-  $('plan-content').append(text('p', `${plan.topics.length} source-checked topics · Revision ${plan.revision} · ${plan.engine}\nScope: first ${plan.sources.length} passages (16 maximum). Review coverage.`, 'plan-intro'));
+  const intro = document.createElement('div'); intro.className = 'plan-intro';
+  const facts = document.createElement('div'); facts.className = 'plan-facts'; facts.append(text('span', `${plan.topics.length} source-checked topics`), text('span', `Revision ${plan.revision}`));
+  intro.append(facts, text('p', `Based on the first ${plan.sources.length} passages (up to 16). Check the references for coverage.`, 'plan-coverage')); $('plan-content').append(intro);
   for (const day of plan.days) {
     const card = document.createElement('section'); card.className = 'day-card'; const heading = text('div', `Day ${day.day}`, 'day-title'); heading.append(text('span', `${day.budget} minutes`)); card.append(heading);
-    for (const task of day.tasks) {
+    for (const [index, task] of day.tasks.entries()) {
       const row = document.createElement('div'); row.className = 'task'; const body = document.createElement('div'); body.className = 'task-main'; body.append(text('strong', task.title));
-      const source = plan.sources.find(s => s.id === task.sourceId); const link = text('button', `↗ ${source?.document || 'Source'} · ${source?.label || ''}`, 'source-link'); link.addEventListener('click', () => showSource(task)); body.append(link); row.append(text('span', '', 'task-check'), body, text('span', `${task.minutes} min`, 'task-time')); card.append(row);
+      const source = plan.sources.find(s => s.id === task.sourceId); const link = text('button', source ? `View source · ${source.label}` : 'Source unavailable', 'source-link'); link.disabled = !source; if (source) { link.title = `${source.document} · ${source.label}`; link.setAttribute('aria-label', `View source: ${source.document}, ${source.label}`); } link.addEventListener('click', () => showSource(task)); body.append(link); const marker = text('span', String(index + 1), 'task-marker'); marker.setAttribute('aria-hidden', 'true'); row.append(marker, body, text('span', `${task.minutes} min`, 'task-time')); card.append(row);
     }
     $('plan-content').append(card);
   }
-  $('plan-badge').textContent = plan.saved ? 'SAVED ON DEVICE' : 'DRAFT'; $('plan-badge').className = `badge ${plan.saved ? 'saved' : 'draft'}`;
+  $('plan-badge').textContent = plan.saved ? 'Saved on device' : 'Draft'; $('plan-badge').className = `badge ${plan.saved ? 'saved' : 'draft'}`;
   $('plan-total').textContent = `${plan.days.length} days · ${total} minutes`;
-  $('plan-meta').textContent = plan.saved ? `Revision ${plan.revision} saved locally` : 'Review references before saving'; $('save-button').disabled = busy || plan.saved; $('revise-prompt').disabled = busy;
+  $('plan-meta').textContent = plan.saved ? `Revision ${plan.revision} saved locally` : 'Review references before saving'; setBusy(busy);
 }
 async function refreshSaved() { savedPlans = await tool('list_saved_plans'); $('saved-count').textContent = savedPlans.length; }
 async function checkModel() { try { const status = await api('/api/status'); $('model-label').textContent = status.available ? 'Local model ready' : 'Local model needs setup'; $('model-detail').textContent = status.available ? `${status.model} · on this device` : `Start local AI: ${status.model} (see README)`; $('model-light').className = `status-light ${status.available ? 'ready' : ''}`; } catch (e) { $('model-label').textContent = 'Connection unavailable'; $('model-detail').textContent = e.message; } }
 
-$('sample-button').addEventListener('click', async () => { try { const doc = await api('/api/sample', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); selected.add(doc.id); await refreshLibrary(); message('The sample syllabus is in your library. Try: “Build a 3-day plan, 60 minutes per day.”'); $('message').value = 'Build a 3-day plan, 60 minutes per day.'; $('message').focus(); } catch (e) { toast(e.message); } });
-$('file-input').addEventListener('change', async event => { const file = event.target.files[0]; if (!file) return; try { if (file.size > 10485760) throw new Error('Choose a document under 10 MB.'); const doc = await api(`/api/documents?name=${encodeURIComponent(file.name)}`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: file }); selected.add(doc.id); await refreshLibrary(); message(`“${doc.name}” is ready. Select your documents and ask for a study plan.`); } catch (e) { toast(e.message); } finally { event.target.value = ''; } });
+$('sample-button').addEventListener('click', async () => { if (busy || !ready) return; setBusy(true); try { const doc = await api('/api/sample', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); selected.add(doc.id); await refreshLibrary(); message('The sample syllabus is in your library. Try: “Build a 3-day plan, 60 minutes per day.”'); $('message').value = 'Build a 3-day plan, 60 minutes per day.'; } catch (e) { toast(e.message); } finally { setBusy(false); $('message').focus(); } });
+$('file-input').addEventListener('change', async event => { const file = event.target.files[0]; if (!file || busy || !ready) return; setBusy(true); try { if (file.size > 10485760) throw new Error('Choose a document under 10 MB.'); const doc = await api(`/api/documents?name=${encodeURIComponent(file.name)}`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: file }); selected.add(doc.id); await refreshLibrary(); message(`“${doc.name}” is ready. Select your documents and ask for a study plan.`); } catch (e) { toast(e.message); } finally { event.target.value = ''; setBusy(false); } });
 document.querySelectorAll('[data-prompt]').forEach(button => button.addEventListener('click', () => { $('message').value = button.dataset.prompt; $('message').focus(); }));
 $('chat-form').addEventListener('submit', async event => {
-  event.preventDefault(); if (busy) return; const input = $('message').value.trim(); if (!input) return;
-  if (!plan && !selected.size) { toast('Add or select a document first.'); return; }
-  message(input, 'user'); $('message').value = ''; setBusy(true); const loading = message(plan ? 'Adjusting your schedule…' : 'Reading your course material with the local model. The first run may take a minute…'); loading.classList.add('loading');
+  event.preventDefault(); if (busy || !ready) return; const input = $('message').value.trim(); if (!input) return;
+  if (/\b(?:save|confirm)\b/i.test(input)) { message('Use “Review & save” to confirm the exact plan. A chat message alone cannot save it.'); return; }
+  const isRevision = plan && !/\b(?:new|build|create|make)\b/i.test(input) && /\b(?:tomorrow|today|day\s*\d|adjust|revise|change|only|per day|each day|a day)\b/i.test(input);
+  if (!isRevision && (!selected.size || selected.size > 5)) { toast('Select between one and five documents for a new plan.'); return; }
+  message(input, 'user'); $('message').value = ''; setBusy(true); const loading = message(isRevision ? 'Adjusting your schedule…' : 'Reading your course material with the local model. The first run may take a minute…'); loading.classList.add('loading');
   try {
-    if (/\b(?:save|confirm)\b/i.test(input)) { message('Use “Review & save” to confirm the exact plan. A chat message alone cannot save it.'); return; }
-    const isRevision = plan && !/\b(?:new|build|create|make)\b/i.test(input) && /\b(?:tomorrow|today|day\s*\d|adjust|revise|change|only|per day|each day|a day)\b/i.test(input);
     plan = isRevision ? await tool('revise_study_plan', { planId: plan.id, revision: plan.revision, message: input }) : await tool('draft_study_plan', { documentIds: [...selected], message: input });
     renderPlan(); const total = plan.days.reduce((s, d) => s + d.budget, 0);
     message(isRevision ? `Updated to ${total} minutes across ${plan.days.length} days. I kept the document-backed topics and rebalanced the sessions. This revision is a draft until you save it.` : `Here’s a ${plan.days.length}-day draft with ${total} minutes of study. Each task links to an exact passage from your material. Review the sources, then tell me if your available time changes.`);
   } catch (e) { message(e.message, 'coach', true); } finally { loading.remove(); setBusy(false); }
 });
-$('message').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('chat-form').requestSubmit(); } });
-$('save-button').addEventListener('click', () => { $('save-summary').textContent = `Revision ${plan.revision}: ${plan.days.length} days, ${plan.days.reduce((s, d) => s + d.budget, 0)} minutes. Only this reviewed version will be saved.`; $('save-dialog').showModal(); });
-$('confirm-save').addEventListener('click', async () => { $('confirm-save').disabled = true; try { const proof = await api('/api/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ planId: plan.id, revision: plan.revision, confirmed: true }) }); plan = await tool('save_study_plan', { planId: plan.id, revision: plan.revision, confirmationToken: proof.confirmationToken }); renderPlan(); await refreshSaved(); $('save-dialog').close(); message(`Revision ${plan.revision} is saved on this device. You can find it in Saved plans or keep refining it.`); toast('Study plan saved locally.'); } catch (e) { toast(e.message); } finally { $('confirm-save').disabled = false; } });
+$('message').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('chat-form').requestSubmit(); } });
+$('save-button').addEventListener('click', () => { if (busy || !plan || plan.saved) return; $('save-summary').textContent = `Revision ${plan.revision}: ${plan.days.length} days, ${plan.days.reduce((s, d) => s + d.budget, 0)} minutes. Only this reviewed version will be saved.`; $('save-dialog').showModal(); });
+$('confirm-save').addEventListener('click', async () => {
+  if (busy || !plan || plan.saved) return;
+  const { id: planId, revision } = plan; setBusy(true); $('confirm-save').disabled = true;
+  try {
+    const proof = await api('/api/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ planId, revision, confirmed: true }) });
+    plan = await tool('save_study_plan', { planId, revision, confirmationToken: proof.confirmationToken }); renderPlan(); $('save-dialog').close();
+    message(`Revision ${plan.revision} is saved on this device. You can find it in Saved plans or keep refining it.`); toast('Study plan saved locally.');
+    try { await refreshSaved(); } catch { toast('Plan saved. Reopen Saved plans to refresh the list.'); }
+  } catch (e) { toast(e.message); } finally { $('confirm-save').disabled = false; setBusy(false); }
+});
 $('protocol-button').addEventListener('click', () => $('protocol-dialog').showModal());
-$('saved-nav').addEventListener('click', async () => { try { await refreshSaved(); $('saved-list').replaceChildren(...(savedPlans.length ? savedPlans.map(p => { const button = text('button', `${p.days.length}-day study plan`, 'saved-item'); button.append(text('small', `Revision ${p.revision} · ${new Date(p.savedAt).toLocaleDateString()}`)); button.addEventListener('click', () => { plan = p; selected = new Set(p.documentIds); renderPlan(); refreshLibrary(); $('saved-dialog').close(); }); return button; }) : [text('p', 'No saved plans yet. Review a draft and save it to keep it here.', 'muted')])); $('saved-dialog').showModal(); } catch (e) { toast(e.message); } });
+$('saved-nav').addEventListener('click', async () => {
+  if (busy || !ready) return; setBusy(true);
+  try {
+    await refreshSaved();
+    $('saved-list').replaceChildren(...(savedPlans.length ? savedPlans.map(p => {
+      const button = text('button', `${p.days.length}-day study plan`, 'saved-item'); button.append(text('small', `Revision ${p.revision} · ${new Date(p.savedAt).toLocaleDateString()}`));
+      button.addEventListener('click', async () => {
+        if (busy) return; setBusy(true);
+        try { const previousSelection = selected; selected = new Set(p.documentIds); try { await refreshLibrary(); } catch (e) { selected = previousSelection; throw e; } plan = p; renderPlan(); $('saved-dialog').close(); message(`Opened your saved ${p.days.length}-day plan. Tell me if your available time has changed.`); }
+        catch (e) { toast(`Could not open the saved plan: ${e.message}`); } finally { setBusy(false); }
+      }); return button;
+    }) : [text('p', 'No saved plans yet. Review a draft and save it to keep it here.', 'muted')])); $('saved-dialog').showModal();
+  } catch (e) { toast(e.message); } finally { setBusy(false); }
+});
 $('workspace-nav').addEventListener('click', () => $('message').focus());
 document.querySelectorAll('.close-dialog').forEach(button => button.addEventListener('click', () => button.closest('dialog').close()));
 $('refresh-model').addEventListener('click', checkModel);
-try { ({ token } = await (await fetch('/api/session')).json()); const initialized = await rpc('initialize', { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'docuflow-browser-client', version: '1.0.0' } }); $('protocol-version').textContent = initialized.protocolVersion; await rpc('notifications/initialized', {}, true); await rpc('tools/list', {}); await refreshLibrary(); await refreshSaved(); await checkModel(); } catch (e) { message(`Could not connect to the local coach: ${e.message}`, 'coach', true); }
+setBusy(false);
+try { const session = await fetch('/api/session'); if (!session.ok) throw new Error('Session unavailable. Reload this page to reconnect.'); ({ token } = await session.json()); const initialized = await rpc('initialize', { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'docuflow-browser-client', version: '1.0.0' } }); $('protocol-version').textContent = initialized.protocolVersion; await rpc('notifications/initialized', {}, true); await rpc('tools/list', {}); await refreshLibrary(); await refreshSaved(); ready = true; } catch (e) { message(`Could not connect to the local coach: ${e.message} Reload this page to retry.`, 'coach', true); }
+setBusy(false); await checkModel();
