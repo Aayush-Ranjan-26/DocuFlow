@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Local document-grounded study coach and real Streamable HTTP MCP server",
-  "scripts": {"start": "node server.js", "test": "node --test test/*.test.js", "test:live": "node scripts/live-check.js"},
+  "scripts": {"start": "node server.js", "test": "node --test test/*.test.js", "test:live": "node scripts/live-check.js", "test:load": "node scripts/load-check.js"},
   "engines": {"node": ">=22.13"},
   "dependencies": {"@modelcontextprotocol/sdk": "1.32.1", "express": "^5.1.0", "mammoth": "1.13.0", "pdf-parse": "2.4.5", "zod": "^3.25.76"}
 }
