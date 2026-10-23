@@ -1,0 +1,4 @@
+*.pdf -text -diff
+*.docx -text -diff
+*.png -text -diff
+docs/Original-DocuFlow-README.md whitespace=-blank-at-eol

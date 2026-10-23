@@ -1,0 +1,20 @@
+Machine Learning Foundations — fictional course for demonstration
+This sample is authored for this project. It contains no student or institutional records.
+
+Unit 1: Data preparation
+Study missing-value handling, train/validation/test splits and standardization. Fit preprocessing only on training data to prevent data leakage.
+
+Unit 2: Supervised learning
+Learn linear regression for continuous targets and logistic regression for classification. Compare their loss functions and explain regularization.
+
+Unit 3: Model evaluation
+Compare precision, recall, F1 and the confusion matrix. Explain why accuracy can be misleading when classes are imbalanced.
+
+Unit 4: Trees and ensembles
+Explain decision-tree splits, overfitting, random forests and boosting. Compare bias and variance using a small worked example.
+
+Unit 5: Unsupervised learning
+Practice k-means clustering and principal component analysis. Explain how feature scaling affects cluster distances.
+
+Practice assessment
+For each unit, explain the concept aloud, solve one example and write a short self-check. Assessment dates are not specified in this sample.

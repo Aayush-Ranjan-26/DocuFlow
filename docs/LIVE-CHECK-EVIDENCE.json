@@ -1,0 +1,213 @@
+{
+  "at": "2026-10-23T05:11:52.781Z",
+  "steps": [
+    {
+      "tool": "draft_study_plan",
+      "elapsedMs": 6484
+    },
+    {
+      "tool": "revise_study_plan",
+      "elapsedMs": 3
+    },
+    {
+      "tool": "list_saved_plans",
+      "elapsedMs": 3
+    },
+    {
+      "tool": "save_study_plan",
+      "elapsedMs": 4
+    },
+    {
+      "tool": "list_saved_plans",
+      "elapsedMs": 2
+    }
+  ],
+  "model": "qwen2.5:1.5b",
+  "result": "PASS",
+  "plan": {
+    "id": "738d8818-7b84-4d2e-8b52-60c121a9e503",
+    "revision": 2,
+    "documentIds": [
+      "86011c2d-2ea9-46a8-b82b-ee11ceb611b2"
+    ],
+    "topics": [
+      {
+        "title": "Data preparation",
+        "sourceId": "S2",
+        "quote": "Study missing-value handling, train/validation/test splits and standardization."
+      },
+      {
+        "title": "Supervised learning",
+        "sourceId": "S3",
+        "quote": "Learn linear regression for continuous targets and logistic regression for classification."
+      },
+      {
+        "title": "Model evaluation",
+        "sourceId": "S4",
+        "quote": "Compare precision, recall, F1 and the confusion matrix."
+      },
+      {
+        "title": "Trees and ensembles",
+        "sourceId": "S5",
+        "quote": "Explain decision-tree splits, overfitting, random forests and boosting."
+      },
+      {
+        "title": "Unsupervised learning",
+        "sourceId": "S6",
+        "quote": "Practice k-means clustering and principal component analysis."
+      }
+    ],
+    "sources": [
+      {
+        "id": "S1",
+        "documentId": "86011c2d-2ea9-46a8-b82b-ee11ceb611b2",
+        "document": "Machine-Learning-Syllabus.txt",
+        "label": "Section 1",
+        "text": "Machine Learning Foundations — fictional course for demonstration\nThis sample is authored for this project. It contains no student or institutional records."
+      },
+      {
+        "id": "S2",
+        "documentId": "86011c2d-2ea9-46a8-b82b-ee11ceb611b2",
+        "document": "Machine-Learning-Syllabus.txt",
+        "label": "Section 2",
+        "text": "Unit 1: Data preparation\nStudy missing-value handling, train/validation/test splits and standardization. Fit preprocessing only on training data to prevent data leakage."
+      },
+      {
+        "id": "S3",
+        "documentId": "86011c2d-2ea9-46a8-b82b-ee11ceb611b2",
+        "document": "Machine-Learning-Syllabus.txt",
+        "label": "Section 3",
+        "text": "Unit 2: Supervised learning\nLearn linear regression for continuous targets and logistic regression for classification. Compare their loss functions and explain regularization."
+      },
+      {
+        "id": "S4",
+        "documentId": "86011c2d-2ea9-46a8-b82b-ee11ceb611b2",
+        "document": "Machine-Learning-Syllabus.txt",
+        "label": "Section 4",
+        "text": "Unit 3: Model evaluation\nCompare precision, recall, F1 and the confusion matrix. Explain why accuracy can be misleading when classes are imbalanced."
+      },
+      {
+        "id": "S5",
+        "documentId": "86011c2d-2ea9-46a8-b82b-ee11ceb611b2",
+        "document": "Machine-Learning-Syllabus.txt",
+        "label": "Section 5",
+        "text": "Unit 4: Trees and ensembles\nExplain decision-tree splits, overfitting, random forests and boosting. Compare bias and variance using a small worked example."
+      },
+      {
+        "id": "S6",
+        "documentId": "86011c2d-2ea9-46a8-b82b-ee11ceb611b2",
+        "document": "Machine-Learning-Syllabus.txt",
+        "label": "Section 6",
+        "text": "Unit 5: Unsupervised learning\nPractice k-means clustering and principal component analysis. Explain how feature scaling affects cluster distances."
+      },
+      {
+        "id": "S7",
+        "documentId": "86011c2d-2ea9-46a8-b82b-ee11ceb611b2",
+        "document": "Machine-Learning-Syllabus.txt",
+        "label": "Section 7",
+        "text": "Practice assessment\nFor each unit, explain the concept aloud, solve one example and write a short self-check. Assessment dates are not specified in this sample."
+      }
+    ],
+    "days": [
+      {
+        "day": 1,
+        "budget": 60,
+        "tasks": [
+          {
+            "title": "Read & explain: Data preparation",
+            "minutes": 15,
+            "sourceId": "S2",
+            "quote": "Study missing-value handling, train/validation/test splits and standardization."
+          },
+          {
+            "title": "Read & explain: Supervised learning",
+            "minutes": 15,
+            "sourceId": "S3",
+            "quote": "Learn linear regression for continuous targets and logistic regression for classification."
+          },
+          {
+            "title": "Read & explain: Model evaluation",
+            "minutes": 15,
+            "sourceId": "S4",
+            "quote": "Compare precision, recall, F1 and the confusion matrix."
+          },
+          {
+            "title": "Read & explain: Trees and ensembles",
+            "minutes": 15,
+            "sourceId": "S5",
+            "quote": "Explain decision-tree splits, overfitting, random forests and boosting."
+          }
+        ]
+      },
+      {
+        "day": 2,
+        "budget": 45,
+        "tasks": [
+          {
+            "title": "Read & explain: Unsupervised learning",
+            "minutes": 15,
+            "sourceId": "S6",
+            "quote": "Practice k-means clustering and principal component analysis."
+          },
+          {
+            "title": "Practice & recall: Data preparation",
+            "minutes": 15,
+            "sourceId": "S2",
+            "quote": "Study missing-value handling, train/validation/test splits and standardization."
+          },
+          {
+            "title": "Practice & recall: Supervised learning",
+            "minutes": 15,
+            "sourceId": "S3",
+            "quote": "Learn linear regression for continuous targets and logistic regression for classification."
+          }
+        ]
+      },
+      {
+        "day": 3,
+        "budget": 60,
+        "tasks": [
+          {
+            "title": "Practice & recall: Model evaluation",
+            "minutes": 15,
+            "sourceId": "S4",
+            "quote": "Compare precision, recall, F1 and the confusion matrix."
+          },
+          {
+            "title": "Practice & recall: Trees and ensembles",
+            "minutes": 15,
+            "sourceId": "S5",
+            "quote": "Explain decision-tree splits, overfitting, random forests and boosting."
+          },
+          {
+            "title": "Practice & recall: Unsupervised learning",
+            "minutes": 15,
+            "sourceId": "S6",
+            "quote": "Practice k-means clustering and principal component analysis."
+          },
+          {
+            "title": "Practice & recall: Data preparation",
+            "minutes": 15,
+            "sourceId": "S2",
+            "quote": "Study missing-value handling, train/validation/test splits and standardization."
+          }
+        ]
+      }
+    ],
+    "message": "I only have 45 minutes tomorrow.",
+    "engine": "qwen2.5:1.5b",
+    "createdAt": "2026-10-23T05:11:59.339Z",
+    "saved": true,
+    "history": [
+      {
+        "role": "user",
+        "text": "Build a 3-day plan, 60 minutes per day."
+      },
+      {
+        "role": "user",
+        "text": "I only have 45 minutes tomorrow."
+      }
+    ],
+    "savedAt": "2026-10-23T05:11:59.351Z"
+  }
+}
