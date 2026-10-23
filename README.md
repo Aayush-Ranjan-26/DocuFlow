@@ -30,7 +30,7 @@ npm ci
 npm start
 ```
 
-The setup downloads the official 24 MB CPU runtime and 1.1 GB Qwen2.5-1.5B Q4_K_M model into ignored `.runtime/`, checking SHA-256 for both. It needs no administrator access and changes no system PATH. The runtime is bound to 127.0.0.1:11434 with alias `qwen2.5:1.5b`, one generation slot, and an 8,192-token context. Do not run Ollama and llama.cpp on that port simultaneously. This machine's prepared `.runtime/` can be started directly; source downloads need the setup step. For Ollama with larger inputs, configure an 8,192-token context as described in its documentation.
+The setup downloads the official 24 MB CPU runtime and 1.1 GB Qwen2.5-1.5B Q4_K_M model into ignored `.runtime/`, checking SHA-256 for both. It needs no administrator access and changes no system PATH. A random private `.runtime/key.txt` authenticates the model API; the app reads it locally without exposing it to the browser. CORS is limited to local app origins. The runtime is bound to 127.0.0.1:11434 with alias `qwen2.5:1.5b`, one generation slot, and an 8,192-token context. Do not run Ollama and llama.cpp on that port simultaneously. This machine's prepared `.runtime/` can be started directly; source downloads need the setup step. For Ollama with larger inputs, configure an 8,192-token context as described in its documentation.
 
 1. Click **Try the machine learning syllabus**, or upload PDF, DOCX, TXT or Markdown. Existing DocuFlow summary Markdown can be imported directly.
 2. Send **Build a 3-day plan, 60 minutes per day.**
@@ -92,7 +92,7 @@ Unit/integration tests inject a predictable generator to test failure boundaries
 - Requests use numeric 1–14 days and 15–240 minutes daily: `3-day plan, 60 minutes per day`, `45 minutes tomorrow`, `30 minutes on day 3`. Tomorrow means day 2, not a calendar date. No calendar, reminders, OCR, quiz grading, voice control or deadline detection.
 - First CPU model loading can take longer. Inference times out at 180 seconds; one generation runs at a time. Failure produces an error, never a pretend plan. Other Ollama models need separate validation.
 
-Environment settings: `PORT` (4317), `DATA_DIR` (project `data/`), `OLLAMA_MODEL` (`qwen2.5:1.5b`), `OLLAMA_URL` (local-only `http://127.0.0.1:11434`). Set these before starting; no `.env` loader is installed.
+Environment settings: `PORT` (4317), `DATA_DIR` (project `data/`), `OLLAMA_MODEL` (`qwen2.5:1.5b`), `OLLAMA_URL` (local-only `http://127.0.0.1:11434`), `LOCAL_AI_KEY` (optional override for the local model API key). Set these before starting; no `.env` loader is installed. If changing PORT, update Start-Local-AI.cmd's allowed CORS origins too.
 
 ## Submission and licenses
 

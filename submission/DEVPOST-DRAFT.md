@@ -29,7 +29,7 @@ Alexa+ — simulated web experience backed by a working self-hosted MCP server.
 Do not claim Fire TV, Bee, Ring, AWS services, Kiro usage, or an additional Open Source mini-challenge contribution without separate qualifying evidence.
 
 ## Links to complete after publication
-- Code: actual public GitHub URL containing this full version, not the unchanged original main branch.
+- Code: https://github.com/Aayush-Ranjan-26/DocuFlow/tree/hackathon/docuflow-study-coach (published and anonymously readable; contains the full new version and license).
 - Demo: actual publicly visible YouTube or Vimeo URL, under 3 minutes.
 - Run instructions: README in the code repository. No login or hosted site is required to run locally.
 - Product feedback: paste the accompanying PRODUCT-FEEDBACK.md.

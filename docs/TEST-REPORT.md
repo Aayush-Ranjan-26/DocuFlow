@@ -13,6 +13,7 @@ Environment: Windows, Node.js 24.13.0, official MCP SDK 1.32.1, llama.cpp build 
 - Browser protocol dialog showed initialize (HTTP 200), notifications/initialized (202), tools/list (200), and draft/revise/save/list calls (200).
 - Portable model setup executed with already downloaded runtime/model, verified checksums, generated a private local key, and started successfully. The model endpoint returned **401** without that key; the app worked with it. CORS is restricted to the local app origins.
 - `npm audit --omit=dev`: **0 vulnerabilities reported** at verification time.
+- Fresh source-ZIP extraction into a separate directory: `npm ci` completed and all **10 tests passed**, including PDF/DOCX fixtures. Binary Git attributes preserve those files across checkout on Windows.
 - Original n8n workflow kept unchanged. Screenshots under `docs/screenshots/` come from the real browser session and contain only fictional sample content.
 
 ## Failure found and corrected
